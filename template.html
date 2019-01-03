@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>${exam_id}: ${exam_name}</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.1/css/bulma.min.css">
+        <style type="text/css">
+            body, label, input {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            }
+            label.answer {
+                display: block;
+                margin: .5em;
+            }
+            #system-options-box {
+                text-align: center;
+                margin: auto;
+            }
+            #btn-start {
+                width: 80px;
+                margin: auto;
+            }
+            .is-display-none {
+                display: none;
+            }
+
+        </style>
+        <script src="https://jp.vuejs.org/js/vue.min.js"></script>
+        <script id="s-exams" type="text/javascript">
+            var exams = [];
+            var answers = [];
+            var examidx = -1;
+            // テストデータ
+            exams = [
+                {
+                    examId: '001',
+                    question: 'test text<br>test text<br>test text 1.',
+                    answerType: 'single',
+                    answers: [
+                        {id: '001-1', answer: 'answer1-1', isCorrect: false, isChecked: false},
+                        {id: '001-2', answer: 'answer1-2', isCorrect: false, isChecked: false},
+                        {id: '001-3', answer: 'answer1-3', isCorrect: true, isChecked: false},
+                        {id: '001-4', answer: 'answer1-4', isCorrect: false, isChecked: false}
+                    ],
+                    checked: {}
+                },
+                {
+                    examId: '002',
+                    question: 'test text<br>test text<br>test text 2.',
+                    answerType: 'multi',
+                    answers: [
+                        {id: '002-1', answer: 'answer2-1', isCorrect: false, isChecked: false},
+                        {id: '002-2', answer: 'answer2-2', isCorrect: false, isChecked: false},
+                        {id: '002-3', answer: 'answer2-3', isCorrect: true, isChecked: false},
+                        {id: '002-4', answer: 'answer2-4', isCorrect: true, isChecked: false}
+                    ],
+                    checked: []
+                },
+                {
+                    examId: '003',
+                    question: 'test text<br>test text<br>test text 3.',
+                    answerType: 'multi',
+                    answers: [
+                        {id: '003-1', answer: 'answer3-1', isCorrect: false, isChecked: false},
+                        {id: '003-2', answer: 'answer3-2', isCorrect: true, isChecked: false},
+                        {id: '003-3', answer: 'answer3-3', isCorrect: false, isChecked: false},
+                        {id: '003-4', answer: 'answer3-4', isCorrect: true, isChecked: false}
+                    ],
+                    checked: []
+                }
+            ];
+        </script>
+        <script id="s-functions" type="text/javascript">
+            function shuffle(array) {
+                var n = array.length, t, i;
+
+                while (n) {
+                    i = Math.floor(Math.random() * n--);
+                    t = array[n];
+                    array[n] = array[i];
+                    array[i] = t;
+                }
+
+                return array;
+            }
+
+            var startTime = new Date();
+            var watch = null;
+            function elapsed() {
+                console.log("elapsed() called.");
+                startTime = new Date();
+                watch = setInterval(function() {
+                    var f = startTime.getTime();
+                    var t = new Date().getTime();
+                    secExam.elapsed = Math.floor((t - f) / (60 * 1000));
+                }, 1000);
+            }
+
+            function resetExam() {
+                console.log("resetExam() called.");
+                clearInterval(watch);
+                examidx = -1;
+                secExam.elapsed = 0;
+                document.getElementById("sec-exam").classList.add('is-display-none');
+                document.getElementById("sec-result").classList.add('is-display-none');
+                document.getElementById("sec-title").classList.remove('is-display-none');
+                document.getElementById("sec-menu").classList.remove('is-display-none');
+            }
+
+            function startExam() {
+                console.log("startExam() called.");
+                secExam.setMarkmode(document.getElementById("form-markmode").markmode.value);
+                console.log(secExam.markmode);
+                exams = shuffle(exams);
+                nextExam();
+                document.getElementById("sec-exam").classList.remove('is-display-none');
+                document.getElementById("sec-result").classList.add('is-display-none');
+                document.getElementById("sec-title").classList.add('is-display-none');
+                document.getElementById("sec-menu").classList.add('is-display-none');
+                elapsed();
+            }
+
+            function nextExam() {
+                console.log("nextExam() called.");
+                if (examidx > -1 && !mark()) {
+                    alert("回答を選択してください。");
+                    return;
+                }
+                if (examidx > -1 && !secExam.isDisplayedCorrectAns()) {
+                    displayCorrectAnswers();
+                    secExam.labelBtnNext = '次へ';
+                    return;
+                }
+
+                examidx++;
+                if (examidx < exams.length) {
+                    secExam.examNo = examidx + 1;
+                    exams[examidx].answers = shuffle(exams[examidx].answers);
+                    secExam.setExam(exams[examidx]);
+                } else {
+                    examidx = exams.length -1;
+                    result();
+                }
+            }
+
+            function prevExam() {
+                console.log("prevExam() called.");
+                examidx--;
+                if (examidx < 0) {
+                    examidx = -1;
+                    document.getElementById("sec-exam").classList.add('is-display-none');
+                    document.getElementById("sec-result").classList.add('is-display-none');
+                    document.getElementById("sec-title").classList.remove('is-display-none');
+                    document.getElementById("sec-menu").classList.remove('is-display-none');
+                } else {
+                    secExam.examNo = examidx + 1;
+                    exams[examidx].answers = shuffle(exams[examidx].answers);
+                    secExam.setExam(exams[examidx]);
+                }
+            }
+
+            function mark() {
+                console.log("mark() called.");
+                var isAnswered = false;
+                var _ans = document.querySelectorAll("form#f-answer input");
+                var markmode = secExam.markmode;
+                for (let i = 0; i < _ans.length; i++) {
+                    if (_ans[i].checked) {
+                        isAnswered = true;
+                        exams[examidx].answers[i].isChecked = true;
+                    } else {
+                        exams[examidx].answers[i].isChecked = false;
+                    }
+                }
+
+                console.log("isAnswered " + isAnswered);
+                return isAnswered;
+            }
+
+            function displayCorrectAnswers() {
+                console.log("displayCorrectAnswers() called.");
+                var _ans = document.querySelectorAll("form#f-answer label.answer");
+                for (let i = 0; i < _ans.length; i++) {
+                    if (exams[examidx].answers[i].isCorrect) {
+                        _ans[i].classList.add('has-text-danger');
+                    }
+                }
+            }
+
+            function result() {
+                console.log("result() called.");
+                document.getElementById("sec-exam").classList.add('is-display-none');
+                document.getElementById("sec-result").classList.remove('is-display-none');
+                document.getElementById("sec-title").classList.add('is-display-none');
+                document.getElementById("sec-menu").classList.add('is-display-none');
+
+                var _corrected = 0;
+                exams.forEach(exam => {
+                    var _isCorrect = true;
+                    exam.answers.forEach(ans => {
+                        if (ans.isCorrect !== ans.isChecked) {
+                            _isCorrect = false;
+                        }
+                        console.log(ans.id + ": isCorrect = " + ans.isCorrect + ", isChecked = " + ans.isChecked);
+                    });
+                    if (_isCorrect) _corrected++;
+                });
+
+                secResult.score = _corrected;
+                secResult.totalPoint = exams.length;
+                secResult.rate = ((_corrected / exams.length) * 100).toFixed(2);
+            }
+        </script>
+        <script id="s-init" type="text/javascript">
+            /**
+             * 初期化
+             */
+            var secExam, secResult;
+            window.addEventListener("load", function() {
+                /**
+                 * Vue DOM登録
+                 */
+                secExam = new Vue({
+                    el: '#sec-exam',
+                    data: {
+                        examNo: 0,
+                        totalCnt: exams.length,
+                        elapsed: 0,
+                        markmode: 'immediately',
+                        labelBtnNext: '次へ',
+                        question: 'question.',
+                        answerType: 'multi',
+                        answers: [
+                            {id: '1', answer: 'answer1', isCorrect: false, isChecked: false},
+                            {id: '2', answer: 'answer2', isCorrect: false, isChecked: false},
+                            {id: '3', answer: 'answer3', isCorrect: true, isChecked: false},
+                            {id: '4', answer: 'answer4', isCorrect: true, isChecked: false}
+                        ],
+                        checked: {},
+                        setExam: function(exam) {
+                            this.question = exam.question;
+                            this.answerType = exam.answerType;
+                            this.answers = exam.answers;
+                            this.checked = exam.checked;
+                            this.setMarkmode(this.markmode);
+                            [].forEach.call(document.querySelectorAll('form#f-answer label.answer'), function(e) {e.classList.remove('has-text-danger')});
+                        },
+                        setNextBtnNext: function() {
+                            this.labelBtnNext = '次へ';
+                        },
+                        setAnswerBtnNext: function() {
+                            this.labelBtnNext = '回答';
+                        },
+                        setMarkmode: function(mode) {
+                            this.markmode = mode;
+                            if (mode === 'immediately') {
+                                this.setAnswerBtnNext();
+                            } else {
+                                this.setNextBtnNext();
+                            }
+                        },
+                        isDisplayedCorrectAns: function() {
+                            return (this.markmode === 'immediately' && this.labelBtnNext === '回答') ? false : true;
+                        }
+                    }
+                });
+                secResult = new Vue({
+                    el: '#sec-result',
+                    data: {
+                        score: 0,
+                        totalPoint: 0,
+                        rate: 0
+                    }
+                });
+
+                /**
+                * イベント登録
+                */
+                document.getElementById("btn-start").addEventListener("click", startExam, false);
+                document.getElementById("btn-next").addEventListener("click", nextExam, false);
+                document.getElementById("btn-back").addEventListener("click", prevExam, false);
+                [].forEach.call(document.getElementsByClassName("btn-reset"), function(e) {e.addEventListener("click", resetExam, false)});
+            }, false);
+        </script>
+    </head>
+    <body>
+        <section id="sec-title" class="hero is-medium is-primary is-bold">
+            <div class="hero-body">
+                <div class="container">
+                    <h1 class="title">
+                        ${exam_name}
+                    </h1>
+                    <h2 class="subtitle">
+                        ${exam_id}
+                    </h2>
+                </div>
+            </div>
+        </section>
+        <section id="sec-menu" class="section">
+            <div class="container">
+                <div class="columns is-desktop">
+                    <div class="column is-three-fifths is-offset-one-fifth">
+                        <div class="box" id="system-options-box">
+                            <div class="columns is-desktop">
+                                <div class="column is-4">
+                                    <div class="content">
+                                        <h4>採点モード</h4>
+                                    </div>
+                                </div>
+                                <div class="column is-8">
+                                    <form id="form-markmode">
+                                        <div class="columns">
+                                            <div class="column is-half">
+                                                <div class="control">
+                                                    <label class="radio">
+                                                        <input type="radio" name="markmode" value="immediately" checked>
+                                                        即時
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="column is-half">
+                                                <div class="control">
+                                                    <label class="radio">
+                                                        <input type="radio" name="markmode" value="summary">
+                                                        即時表示なし
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <button id="btn-start" class="button is-medium is-primary">開始</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-exam" class="section is-display-none">
+            <div class="container">
+                <nav class="panel">
+                    <p class="panel-heading">
+                        {{ examNo }} / {{ totalCnt }}
+                    </p>
+                    <div class="panel-block">
+                        <div class="columns is-mobile" style="width: 100%;">
+                            <div class="column is-half"><span class="is-pulled-right">{{ elapsed }} 分 経過</span></div>
+                            <div class="column is-half"><span class="is-pulled-right"><button class="btn-reset button is-small is-warning">やり直し</button></span></div>
+                        </div>
+                    </div>
+                    <div class="panel-block">
+                        <p v-html="question"></p>
+                    </div>
+                    <div class="panel-block">
+                        <form id="f-answer" name="f_answer">
+                            <div class="control" v-if="answerType === 'multi'">
+                                <label class="answer checkbox" v-for="ans in answers">
+                                    <input v-model="checked" type="checkbox" v-bind:value="ans.id">
+                                    {{ ans.answer }}
+                                </label>
+                            </div>
+                            <div class="control" v-else>
+                                <label class="answer radio" v-for="ans in answers">
+                                    <input v-model="checked" type="radio" name="ans_select_one" v-bind:value="ans.id">
+                                    {{ ans.answer }}
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="panel-block">
+                        <div class="columns is-mobile">
+                            <div class="column is-half">
+                                <button id="btn-next" class="button is-info">{{ labelBtnNext }}</button>
+                            </div>
+                            <div class="column is-half">
+                                <button id="btn-back" class="button">戻る</button>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </section>
+
+        <section id="sec-result" class="section is-display-none">
+            <div class="container">
+                <div class="box is-centered">
+                    <h1 class="title">
+                        採点結果
+                    </h1>
+                    <h2 class="subtitle">
+                        {{ score }} / {{ totalPoint }} ({{ rate }} %)
+                    </h2>
+                    <button class="btn-reset button is-medium">やり直し</button>
+                </div>
+            </div>
+        </section>
+    </body>
+</html>
